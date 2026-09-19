@@ -78,6 +78,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `nextflow.config`, and `check_max()` is one. Lifting the bound means migrating to
   `process.resourceLimits`.
 
+- **SpecHLA never reached the consensus.** It was the only caller with no parse
+  step, so `modules/spechla.nf` copied its native wide table
+  (`Sample | HLA_A_1 | HLA_A_2 | ...`) straight through, while
+  `modules/aggregation.nf` reads only long format. Aggregation took "Sample" as a
+  gene on one line and the sample id on the next, matched neither against
+  `mv_genes`, and dropped both -- so SpecHLA ran, called correctly, and contributed
+  nothing to the vote on every run. `bin/parse_spechla_results.py` converts wide to
+  long using the same column convention `extract_wide_gene_columns()` in
+  `bin/hla_benchmark.py` uses, and the native output is kept as
+  `${sample}_spechla_raw.txt`. No published result is affected: the manuscript's
+  numbers come from `hla_benchmark.py`, which parses SpecHLA correctly.
+
 - **The consensus step called nothing.** `conf/tool_weights_{wgs,wes,rna}.json` are
   flat `{tool: weight}` maps, but `lookup_weight()` understood only a nested runtime
   schema and a legacy `raw_accuracy` one and returned `0.0` for everything else. On
