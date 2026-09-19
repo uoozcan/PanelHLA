@@ -18,6 +18,7 @@ process SPECHLA {
 
     output:
     tuple val(sample_id), path("${sample_id}_spechla.txt"), emit: results
+    path("${sample_id}_spechla_raw.txt"), emit: raw, optional: true
     path "versions.yml", emit: versions
 
     script:
@@ -93,10 +94,15 @@ process SPECHLA {
 
     # Step 3: Parse results
     echo "[Step 3] Parsing results..."
+    # SpecHLA writes one row per sample with a column pair per gene. Every other
+    # caller here emits one row per gene, and modules/aggregation.nf reads only
+    # that -- so copying SpecHLA's native layout through meant it contributed
+    # nothing to the consensus despite calling correctly. Keep the raw file and
+    # emit the long form under the name aggregation matches.
     if [ -f "${sample_id}/hla.result.txt" ]; then
-        cp ${sample_id}/hla.result.txt ${sample_id}_spechla.txt
+        cp ${sample_id}/hla.result.txt ${sample_id}_spechla_raw.txt
     elif [ -f "${sample_id}/${sample_id}/hla.result.txt" ]; then
-        cp ${sample_id}/${sample_id}/hla.result.txt ${sample_id}_spechla.txt
+        cp ${sample_id}/${sample_id}/hla.result.txt ${sample_id}_spechla_raw.txt
     else
         # Never manufacture an empty result. A placeholder file exits 0 and is
         # indistinguishable downstream from a caller that genuinely typed
@@ -107,6 +113,11 @@ process SPECHLA {
         ls -la ${sample_id}/ >&2 || true
         exit 1
     fi
+
+    python3 ${projectDir}/bin/parse_spechla_results.py \
+        --input  ${sample_id}_spechla_raw.txt \
+        --sample ${sample_id} \
+        --output ${sample_id}_spechla.txt
 
     # Cleanup intermediate files
     rm -f ${sample_id}/namesort.bam
@@ -134,6 +145,7 @@ process SPECHLA_FASTQ {
 
     output:
     tuple val(sample_id), path("${sample_id}_spechla.txt"), emit: results
+    path("${sample_id}_spechla_raw.txt"), emit: raw, optional: true
     path "versions.yml", emit: versions
 
     script:
@@ -194,10 +206,15 @@ process SPECHLA_FASTQ {
 
     # Parse results
     echo "[Parsing results...]"
+    # SpecHLA writes one row per sample with a column pair per gene. Every other
+    # caller here emits one row per gene, and modules/aggregation.nf reads only
+    # that -- so copying SpecHLA's native layout through meant it contributed
+    # nothing to the consensus despite calling correctly. Keep the raw file and
+    # emit the long form under the name aggregation matches.
     if [ -f "${sample_id}/hla.result.txt" ]; then
-        cp ${sample_id}/hla.result.txt ${sample_id}_spechla.txt
+        cp ${sample_id}/hla.result.txt ${sample_id}_spechla_raw.txt
     elif [ -f "${sample_id}/${sample_id}/hla.result.txt" ]; then
-        cp ${sample_id}/${sample_id}/hla.result.txt ${sample_id}_spechla.txt
+        cp ${sample_id}/${sample_id}/hla.result.txt ${sample_id}_spechla_raw.txt
     else
         # Never manufacture an empty result. A placeholder file exits 0 and is
         # indistinguishable downstream from a caller that genuinely typed
@@ -208,6 +225,11 @@ process SPECHLA_FASTQ {
         ls -la ${sample_id}/ >&2 || true
         exit 1
     fi
+
+    python3 ${projectDir}/bin/parse_spechla_results.py \
+        --input  ${sample_id}_spechla_raw.txt \
+        --sample ${sample_id} \
+        --output ${sample_id}_spechla.txt
 
     # Version info
     cat <<END_VERSIONS > versions.yml
